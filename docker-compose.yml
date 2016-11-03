@@ -1,0 +1,18 @@
+version: '2'
+
+services:
+    redis:
+        image: redis:alpine
+        ports:
+            - "localhost:6470:6479"
+        networks:
+            - ws_scale
+
+networks:
+    ws_scale:
+        ipam:
+            driver: default
+            config:
+            - subnet: 172.20.0.0/24
+              gateway: 172.20.0.1
+
