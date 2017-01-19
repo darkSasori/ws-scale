@@ -1,53 +1,29 @@
+import redis
+import threading
 import logging
 
-class Client(object):
-    def __init__(self, username):
-        self.username = username
-        self.connections = []
+pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+redis = redis.Redis(connection_pool=pool)
 
-    def add(self, ws):
-        if ws in self.connections:
-            return False
-        self.connections.append(ws)
-        logging.info("%s: %d", self.username, len(self.connections))
+class Thread(threading.Thread):
+    def __init__(self, r, channels, ws):
+        threading.Thread.__init__(self)
+        self.redis = r
+        self.pubsub = self.redis.pubsub()
+        self.channels = [channels]
+        self.channels.append("all")
+        self.pubsub.subscribe(self.channels)
+        self.ws = ws
 
-    def remove(self, ws):
-        if ws not in self.connections:
-            return False
-        self.connections.remove(ws)
-        logging.info("%s: %d", self.username, len(self.connections))
+    def run(self):
+        for item in self.pubsub.listen():
+            logging.debug(item)
+            if item['type'] == 'message':
+                self.ws.write_message(item['data'])
+        logging.info("End {}".format(self.channels))
 
-    def send(self, msg):
-        [ ws.write_message(msg) for ws in self.connections ]
+    def end(self):
+        self.pubsub.unsubscribe(self.channels)
 
-class Manager(object):
-    def __init__(self):
-        self.clients = {}
-
-    def add(self, username, ws):
-        try:
-            client = self.clients[username]
-        except:
-            self.clients[username] = Client(username)
-            client = self.clients[username]
-
-        client.add(ws)
-        logging.info("Clients: %d", len(self.clients))
-
-    def remove(self, username, ws):
-        try:
-            self.clients[username].remove(ws)
-        except:
-            pass
-
-    def send(self, user_to, user_from, msg):
-        try:
-            self.clients[user_to].send(msg)
-            self.clients[user_from].send(msg)
-        except:
-            pass
-
-    def sendAll(self, msg):
-        [ cli.send(msg) for key, cli in self.clients.items() ]
-
-manager = Manager()
+def create(username, ws):
+    return Thread(redis, username, ws)

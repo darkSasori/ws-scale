@@ -4,6 +4,7 @@ import logging
 from wsgiref.simple_server import make_server
 import handlers
 import settings
+import redis
 
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)

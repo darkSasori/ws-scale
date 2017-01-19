@@ -6,5 +6,5 @@ settings = dict(
     template_path=os.path.join(os.getcwd(), 'templates'),
     autoreload=True,
     debug=True,
-    redis_host=redis.ConnectionPool(host="localhost", port=6379, db=0)
+    redis_uri="redis://localhost:6379/0"
 )

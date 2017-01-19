@@ -1,8 +1,8 @@
 import tornado.web
 import tornado.websocket
 import settings
-import manager
 import re
+import manager
 
 class Main(tornado.web.RequestHandler):
     def get(self):
@@ -14,16 +14,18 @@ class WebSocket(tornado.websocket.WebSocketHandler):
 
     def open(self, username):
         self.username = username
-        self.manager = manager.manager
-        self.manager.add(self.username, self)
+        self.thread = manager.create(self.username, self)
+        print(self.thread)
+        self.thread.start()
 
     def on_message(self, msg):
         m = re.search('(\w+):(.*)', msg)
         msg = "%s => %s" % (self.username, msg)
         try:
-            self.manager.send(m.group(1), self.username, msg)
+            manager.redis.publish(m.group(1), msg)
+            manager.redis.publish(self.username, msg)
         except:
-            self.manager.sendAll(msg)
+            manager.redis.publish("all", msg)
 
     def on_close(self):
-        self.manager.remove(self.username, self)
+        self.thread.end()
